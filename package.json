@@ -1,15 +1,17 @@
 {
-  "name": "n8n-nodes-<...>",
+  "name": "n8n-kavenegar",
   "version": "0.1.0",
   "description": "",
   "keywords": [
-    "n8n-community-node-package"
+    "n8n-community-node-package",
+    "kavenegar",
+    "sms"
   ],
   "license": "MIT",
   "homepage": "",
   "author": {
-    "name": "",
-    "email": ""
+    "name": "Kamva",
+    "email": "support@kamva.ir"
   },
   "repository": {
     "type": "git",
@@ -30,12 +32,10 @@
   "n8n": {
     "n8nNodesApiVersion": 1,
     "credentials": [
-      "dist/credentials/ExampleCredentialsApi.credentials.js",
-      "dist/credentials/HttpBinApi.credentials.js"
+      "dist/credentials/KavenegarApi.credentials.js"
     ],
     "nodes": [
-      "dist/nodes/ExampleNode/ExampleNode.node.js",
-      "dist/nodes/HttpBin/HttpBin.node.js"
+      "dist/nodes/kavenegarSMS/kavenegarSMS.node.js"
     ]
   },
   "devDependencies": {
