@@ -1,4 +1,10 @@
-import { INodeType, INodeTypeDescription } from 'n8n-workflow';
+import {
+  IExecuteFunctions,
+  INodeExecutionData,
+  INodeType,
+  INodeTypeDescription,
+  NodeOperationError,
+} from 'n8n-workflow';
 
 export class KavenegarSMS implements INodeType {
   description: INodeTypeDescription = {
@@ -20,59 +26,93 @@ export class KavenegarSMS implements INodeType {
         required: true,
       },
     ],
-    operationOptions: [
+    properties: [
       {
-        name: 'sendSMS',
-        description: 'Send an SMS',
-        parameters: [
-          {
-            name: 'cell',
-            type: 'string',
-            description: 'Cell number to send the SMS',
-            required: true,
-          },
-          {
-            name: 'text',
-            type: 'string',
-            description: 'The text to be sent in the SMS',
-            required: true,
-          },
-          {
-            name: 'pattern',
-            type: 'string',
-            description: 'The pattern to be used for the SMS',
-            required: true,
-          },
-        ],
-        execute: async ({ operationParameters, context }) => {
-          const { cell, text, pattern } = operationParameters;
-
-          const credentials = context.getCredentials('kavenegarApi');
-
-          if (credentials === undefined) {
-            throw new Error('No credentials got returned!');
-          }
-
-          const apiKey = credentials.apiKey as string;
-
-          const responseData = await context.helpers.request({
-            method: 'POST',
-            url: `https://api.kavenegar.com/v1/${apiKey}/sms/send.json`,
-            body: {
-              receptor: cell,
-              message: text,
-              pattern_code: pattern,
-            },
-            json: true,
-          });
-
-          if (responseData[0].return.status !== 200) {
-            throw new Error('Kavenegar API request failed. Response: ' + responseData[0].return.status);
-          }
-
-          return [responseData];
-        },
+        displayName: 'Cell Number',
+        name: 'cell',
+        type: 'string',
+        default: '',
+        placeholder: '09123456789',
+        description: 'Cell number to send the SMS',
+        required: true,
+      },
+      {
+        displayName: 'Message Text',
+        name: 'text',
+        type: 'string',
+        default: '',
+        description: 'The text to be sent in the SMS',
+        required: true,
+      },
+      {
+        displayName: 'Pattern Code',
+        name: 'pattern',
+        type: 'string',
+        default: '',
+        description: 'The pattern code to be used for the SMS',
+        required: true,
       },
     ],
   };
+
+  async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+    const items = this.getInputData();
+    const returnData: INodeExecutionData[] = [];
+
+    for (let i = 0; i < items.length; i++) {
+      try {
+        const cell = this.getNodeParameter('cell', i) as string;
+        const text = this.getNodeParameter('text', i) as string;
+        const pattern = this.getNodeParameter('pattern', i) as string;
+
+        const credentials = await this.getCredentials('kavenegarApi');
+
+        if (credentials === undefined || credentials === null) {
+          throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
+        }
+
+        const apiKey = credentials.apiKey as string;
+
+        const responseData = await this.helpers.request({
+          method: 'POST',
+          url: `https://api.kavenegar.com/v1/${apiKey}/sms/send.json`,
+          body: {
+            receptor: cell,
+            message: text,
+            pattern_code: pattern,
+          },
+          json: true,
+        });
+
+        if (responseData.return.status !== 200) {
+          throw new NodeOperationError(
+            this.getNode(),
+            `Kavenegar API request failed. Response: ${responseData.return.status}`
+          );
+        }
+
+        returnData.push({
+          json: responseData,
+          pairedItem: {
+            item: i,
+          },
+        });
+      } catch (error) {
+        if (this.continueOnFail()) {
+          returnData.push({
+            json: {
+              error: error.message,
+            },
+            pairedItem: {
+              item: i,
+            },
+          });
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    return [returnData];
+  }
 }
